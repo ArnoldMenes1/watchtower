@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Hub | The Watchtower</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+        :root { --rich-black: #00072d; --accent: #123499; --card-bg: rgba(255, 255, 255, 0.03); --border: rgba(255, 255, 255, 0.05); --text-main: #ffffff; --text-mute: #94a3b8; }
+        body.light-mode { --rich-black: #f8fafc; --card-bg: #ffffff; --border: rgba(0, 0, 0, 0.06); --text-main: #0f172a; --text-mute: #64748b; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--rich-black); color: var(--text-main); margin: 0; transition: background 0.3s; overflow-x: hidden; }
+        
+        .sidebar { background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(20px); border-right: 1px solid var(--border); }
+        body.light-mode .sidebar { background: #ffffff; }
+        .nav-link { transition: 0.3s; border-radius: 12px; color: var(--text-mute); display: flex; align-items: center; gap: 12px; padding: 0.8rem 1rem; font-size: 0.875rem; font-weight: 700; }
+        .nav-link:hover, .nav-link.active { background: var(--accent); color: white; }
+        
+        .ai-card { background: linear-gradient(145deg, rgba(18, 52, 153, 0.05), rgba(0, 0, 0, 0.2)); border: 1px solid var(--border); border-radius: 24px; }
+        .ai-response-area { background: rgba(0, 0, 0, 0.2); border-radius: 16px; min-height: 200px; font-size: 0.95rem; line-height: 1.6; }
+        
+        .typing-dot { width: 4px; height: 4px; background: var(--accent); border-radius: 50%; animation: typing 1.4s infinite; }
+        @keyframes typing { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+    </style>
+</head>
+<body class="flex min-h-screen">
+
+    <aside class="sidebar w-72 fixed h-full flex flex-col p-6 z-50">
+        <div class="flex items-center gap-3 mb-10 px-2">
+            <div class="p-2 bg-[#123499] rounded-lg"><i data-lucide="shield" class="w-6 h-6 text-white"></i></div>
+            <span class="font-extrabold tracking-tighter text-xl uppercase italic">The Watchtower</span>
+        </div>
+
+        <nav class="flex-grow space-y-1 overflow-y-auto pr-2">
+            <a href="dashboard.html" class="nav-link"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard</a>
+            <a href="inventory.html" class="nav-link"><i data-lucide="package" class="w-4 h-4"></i> Boutique</a>
+            <a href="crm.html" class="nav-link"><i data-lucide="users" class="w-4 h-4"></i> CRM Contacts</a>
+            <a href="mailer-hub.html" class="nav-link"><i data-lucide="mail" class="w-4 h-4"></i> Mailler Hub</a>
+            <div class="pt-6 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Stratégie</div>
+            <a href="goals.html" class="nav-link"><i data-lucide="target" class="w-4 h-4"></i> Objectifs</a>
+            <a href="tasks.html" class="nav-link"><i data-lucide="check-square" class="w-4 h-4"></i> Tâches</a>
+            <a href="social-manager.html" class="nav-link"><i data-lucide="share-2" class="w-4 h-4"></i> Social Manager</a>
+            <div class="pt-6 pb-2 px-4 text-[10px] font-black text-blue-500 uppercase tracking-widest">Intelligence</div>
+            <a href="ai-hub.html" class="nav-link active border border-blue-500/20 bg-blue-500/5 text-blue-400"><i data-lucide="sparkles" class="w-4 h-4"></i> IA Hub</a>
+        </nav>
+
+        <div class="mt-auto pt-6 space-y-2 border-t border-white/5">
+            <button onclick="toggleTheme()" class="w-full p-3 rounded-xl bg-[#123499]/10 text-[#123499] font-black text-[10px] uppercase flex items-center justify-center gap-2 border border-[#123499]/20 hover:bg-[#123499]/20">
+                <i data-lucide="sun" class="w-4 h-4"></i> SWITCH THÈME
+            </button>
+            <button onclick="logout()" class="nav-link text-red-500 w-full justify-center"><i data-lucide="log-out" class="w-4 h-4"></i> Déconnexion</button>
+        </div>
+    </aside>
+
+    <main class="flex-grow ml-72 p-10">
+        <header class="mb-12">
+            <h1 class="text-4xl font-black uppercase tracking-tight">Intelligence Artificielle</h1>
+            <p class="text-slate-500 text-sm font-bold mt-1 uppercase tracking-widest">Analyse prédictive & Assistant stratégique</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="ai-card p-6">
+                    <h2 class="font-black text-xs uppercase mb-4 tracking-widest text-[#123499]">Configuration</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-500 uppercase block mb-2">Modèle d'IA</label>
+                            <select id="aiModel" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-sm outline-none font-bold">
+                                <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (Recommandé)</option>
+                                <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (Léger)</option>
+                                <option value="openrouter/free">Auto (Modèle Gratuit)</option>
+                            </select>
+                        </div>
+                        <button onclick="runAnalysis()" class="w-full bg-[#123499] text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2 hover:scale-[1.02] transition-all">
+                            <i data-lucide="zap" class="w-4 h-4"></i> Lancer l'analyse business
+                        </button>
+                    </div>
+                </div>
+
+                <div class="ai-card p-6 border-blue-500/20 bg-blue-500/5">
+                    <h3 class="font-black text-[10px] uppercase mb-2 text-blue-400">Capacités actuelles</h3>
+                    <ul class="text-[10px] font-bold text-slate-400 space-y-2 uppercase italic">
+                        <li>• Analyse des Leads CRM</li>
+                        <li>• Recommandations Stratégiques</li>
+                        <li>• Optimisation des Tâches</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2">
+                <div class="ai-card p-8 h-full flex flex-col">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                            <span class="text-[10px] font-black uppercase tracking-widest">Assistant Watchtower Connecté</span>
+                        </div>
+                        <button onclick="clearChat()" class="text-slate-500 hover:text-white transition-colors"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                    </div>
+
+                    <div id="aiResponse" class="ai-response-area flex-grow p-6 overflow-y-auto text-slate-300 font-medium italic border border-white/5">
+                        L'intelligence artificielle est prête. Cliquez sur "Lancer l'analyse" pour obtenir un diagnostic complet de The Productivity Labs Hub.
+                    </div>
+
+                    <div class="mt-6 flex gap-3">
+                        <input type="text" id="userPrompt" placeholder="Posez une question spécifique sur vos projets..." class="flex-grow bg-white/5 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-[#123499] font-bold">
+                        <button onclick="askAI()" class="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-[#123499] hover:text-white transition-all">
+                            <i data-lucide="send" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const _supabase = supabase.createClient('https://lateattegnkqduqbpvta.supabase.co', 'sb_publishable_SspxOBPHM5ZIdRnX8W4V0A_ONolbILg', { auth: { persistSession: false } });
+        const apiKey = "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";
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem('watchtower-theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+            lucide.createIcons();
+        }
+        if(localStorage.getItem('watchtower-theme') === 'light') document.body.classList.add('light-mode');
+
+        async function fetchContext() {
+            const { data: leads } = await _supabase.from('leads').select('*');
+            const { data: tasks } = await _supabase.from('tasks').select('*');
+            const { data: goals } = await _supabase.from('goals').select('*');
+            
+            return `
+                Context Business:
+                - Leads totaux: ${leads?.length || 0}
+                - Tâches en cours: ${tasks?.filter(t => t.status !== 'Done').length || 0}
+                - Objectifs actifs: ${goals?.map(g => g.title + " (" + Math.round((g.current_value/g.target_value)*100) + "%)").join(', ') || 'Aucun'}
+            `;
+        }
+
+        async function callOpenRouter(prompt) {
+            const responseArea = document.getElementById('aiResponse');
+            const model = document.getElementById('aiModel').value;
+            responseArea.innerHTML = '<div class="flex gap-1 items-center"><span>Analyse en cours</span><div class="typing-dot"></div><div class="typing-dot" style="animation-delay:0.2s"></div><div class="typing-dot" style="animation-delay:0.4s"></div></div>';
+
+            try {
+                const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${apiKey}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        "model": model,
+                        "messages": [
+                            { "role": "system", "content": "Tu es l'intelligence stratégique de 'The Watchtower' pour l'entreprise Productivity Labs. Réponds de manière concise, pro et encourageante." },
+                            { "role": "user", "content": prompt }
+                        ]
+                    })
+                });
+                const data = await res.json();
+                responseArea.innerHTML = data.choices[0].message.content.replace(/\n/g, '<br>');
+            } catch (err) {
+                responseArea.innerHTML = "Erreur système: Impossible de contacter l'IA.";
+            }
+        }
+
+        async function runAnalysis() {
+            const context = await fetchContext();
+            const prompt = `Fais une analyse rapide de ces données et donne-moi 3 points d'action prioritaires pour aujourd'hui : ${context}`;
+            callOpenRouter(prompt);
+        }
+
+        async function askAI() {
+            const prompt = document.getElementById('userPrompt').value;
+            if(!prompt) return;
+            const context = await fetchContext();
+            callOpenRouter(`Question: ${prompt} \n\n Contexte actuel du Hub: ${context}`);
+            document.getElementById('userPrompt').value = "";
+        }
+
+        function clearChat() {
+            document.getElementById('aiResponse').innerHTML = "Terminal réinitialisé. En attente d'instruction...";
+        }
+
+        function logout() { window.location.href = 'login.html'; }
+        lucide.createIcons();
+    </script>
+</body>
+</html>

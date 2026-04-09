@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategy Hub | The Watchtower</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+        :root { --rich-black: #00072d; --accent: #123499; --card-bg: rgba(255, 255, 255, 0.03); --border: rgba(255, 255, 255, 0.05); --text-main: #ffffff; --text-mute: #94a3b8; }
+        body.light-mode { --rich-black: #f8fafc; --card-bg: #ffffff; --border: rgba(0, 0, 0, 0.06); --text-main: #0f172a; --text-mute: #64748b; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--rich-black); color: var(--text-main); margin: 0; transition: background 0.3s; overflow-x: hidden; }
+        .sidebar { background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(20px); border-right: 1px solid var(--border); }
+        body.light-mode .sidebar { background: #ffffff; }
+        .nav-link { transition: 0.3s; border-radius: 12px; color: var(--text-mute); display: flex; align-items: center; gap: 12px; padding: 0.8rem 1rem; font-size: 0.875rem; font-weight: 700; }
+        .nav-link:hover, .nav-link.active { background: var(--accent); color: white; }
+        .goal-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 24px; padding: 2rem; transition: 0.3s; }
+        .progress-bar { height: 8px; border-radius: 10px; background: rgba(255,255,255,0.05); overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #123499, #00d2ff); transition: 1s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+<body class="flex min-h-screen">
+
+    <aside class="sidebar w-72 fixed h-full flex flex-col p-6 z-50">
+        <div class="flex items-center gap-3 mb-10 px-2">
+            <div class="p-2 bg-[#123499] rounded-lg"><i data-lucide="shield" class="w-6 h-6 text-white"></i></div>
+            <span class="font-extrabold tracking-tighter text-xl uppercase italic">The Watchtower</span>
+        </div>
+        <nav class="flex-grow space-y-1 overflow-y-auto pr-2">
+            <a href="dashboard.html" class="nav-link"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard</a>
+            <a href="inventory.html" class="nav-link"><i data-lucide="package" class="w-4 h-4"></i> Boutique</a>
+            <a href="crm.html" class="nav-link"><i data-lucide="users" class="w-4 h-4"></i> CRM Contacts</a>
+            <a href="mailer-hub.html" class="nav-link"><i data-lucide="mail" class="w-4 h-4"></i> Mailler Hub</a>
+            <div class="pt-6 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-main">Stratégie</div>
+            <a href="goals.html" class="nav-link active"><i data-lucide="target" class="w-4 h-4"></i> Objectifs</a>
+            <a href="tasks.html" class="nav-link"><i data-lucide="check-square" class="w-4 h-4"></i> Tâches</a>
+            <a href="social-manager.html" class="nav-link"><i data-lucide="share-2" class="w-4 h-4"></i> Social Manager</a>
+            <div class="pt-6 pb-2 px-4 text-[10px] font-black text-blue-500 uppercase tracking-widest text-main">Intelligence</div>
+            <a href="ai-hub.html" class="nav-link border border-blue-500/20 bg-blue-500/5 text-blue-400"><i data-lucide="sparkles" class="w-4 h-4"></i> IA Hub</a>
+        </nav>
+        <div class="mt-auto pt-6 space-y-2 border-t border-white/5">
+            <button onclick="toggleTheme()" class="w-full p-3 rounded-xl bg-[#123499]/10 text-[#123499] font-black text-[10px] uppercase flex items-center justify-center gap-2 border border-[#123499]/20 hover:bg-[#123499]/20 transition-all">
+                <i data-lucide="sun" class="w-4 h-4"></i> SWITCH THÈME
+            </button>
+            <button onclick="logout()" class="nav-link text-red-500 w-full justify-center"><i data-lucide="log-out" class="w-4 h-4"></i> Déconnexion</button>
+        </div>
+    </aside>
+
+    <main class="flex-grow ml-72 p-10">
+        <header class="flex justify-between items-start mb-12">
+            <div>
+                <h1 class="text-4xl font-black uppercase tracking-tight">Objectifs</h1>
+                <p class="text-slate-500 text-sm font-bold mt-1 uppercase">Vision Stratégique Labs</p>
+            </div>
+            <button onclick="toggleModal('goalModal', true)" class="bg-[#123499] text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-blue-900/40 flex items-center gap-2">
+                <i data-lucide="plus" class="w-4 h-4"></i> Nouveau
+            </button>
+        </header>
+
+        <div id="goalsContainer" class="grid grid-cols-1 xl:grid-cols-2 gap-8"></div>
+    </main>
+
+    <div id="goalModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-white/10 w-full max-w-lg rounded-3xl p-8">
+            <h2 class="text-2xl font-black uppercase mb-6 text-white">Fixer une cible</h2>
+            <div class="space-y-4">
+                <input type="text" id="gTitle" placeholder="Titre de l'objectif..." class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white font-bold outline-none">
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="number" id="gTarget" placeholder="Valeur cible" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white font-bold outline-none">
+                    <select id="gCurrency" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white font-bold outline-none">
+                        <option value="$">$ USD</option>
+                        <option value="FC">FC (RDC)</option>
+                        <option value="€">€ EUR</option>
+                        <option value="Units">Unités</option>
+                    </select>
+                </div>
+                <select id="gCat" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white font-bold outline-none">
+                    <option value="Business">Business</option>
+                    <option value="Académique">UPL Académique</option>
+                    <option value="Personnel">Personnel</option>
+                </select>
+                <div class="flex gap-3 pt-4">
+                    <button onclick="toggleModal('goalModal', false)" class="flex-1 p-4 rounded-xl font-black text-[10px] border border-white/10 text-white">ANNULER</button>
+                    <button onclick="saveGoal()" class="flex-1 p-4 rounded-xl bg-[#123499] font-black text-[10px] text-white">ENREGISTRER</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="updateModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-white/10 w-full max-w-sm rounded-3xl p-8">
+            <h2 class="text-xl font-black uppercase mb-1 text-white">Mise à jour</h2>
+            <p id="displayGoalName" class="text-slate-500 text-[10px] font-black uppercase mb-6 italic"></p>
+            <input type="hidden" id="updateId">
+            <div class="space-y-4">
+                <input type="number" id="newCurrentValue" class="w-full bg-white/5 border border-white/10 rounded-xl p-6 text-white font-black text-3xl text-center outline-none focus:border-[#123499]">
+                <div class="flex gap-3">
+                    <button onclick="toggleModal('updateModal', false)" class="flex-1 p-4 rounded-xl font-black text-[10px] border border-white/10 text-white">FERMER</button>
+                    <button onclick="submitUpdate()" class="flex-1 p-4 rounded-xl bg-[#123499] font-black text-[10px] text-white uppercase">Actualiser</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const _supabase = supabase.createClient('https://lateattegnkqduqbpvta.supabase.co', 'sb_publishable_SspxOBPHM5ZIdRnX8W4V0A_ONolbILg', { auth: { persistSession: false } });
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem('watchtower-theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+            lucide.createIcons();
+        }
+        if(localStorage.getItem('watchtower-theme') === 'light') document.body.classList.add('light-mode');
+
+        function toggleModal(id, show) {
+            const modal = document.getElementById(id);
+            if(show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        async function loadGoals() {
+            const { data, error } = await _supabase.from('goals').select('*').order('created_at', { ascending: false });
+            if (error) return;
+
+            const container = document.getElementById('goalsContainer');
+            container.innerHTML = '';
+
+            data.forEach(g => {
+                const percent = Math.min(Math.round((g.current_value / g.target_value) * 100), 100);
+                const card = document.createElement('div');
+                card.className = "goal-card group";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <span class="px-2 py-1 rounded bg-[#123499]/10 text-[#123499] text-[9px] font-black uppercase border border-[#123499]/20 mb-2 inline-block">${g.category}</span>
+                            <h3 class="text-xl font-black uppercase tracking-tight">${g.title}</h3>
+                        </div>
+                        <span class="text-3xl font-black text-[#123499]">${percent}%</span>
+                    </div>
+                    <div class="progress-bar mb-6"><div class="progress-fill" style="width: ${percent}%"></div></div>
+                    <div class="flex justify-between items-end">
+                        <div class="space-y-1">
+                            <p class="text-[10px] font-black text-slate-500 uppercase">Actuel / Cible</p>
+                            <p class="text-lg font-black">${g.current_value} <span class="text-slate-500 text-xs">/ ${g.target_value} ${g.currency || '$'}</span></p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="edit-btn p-3 bg-[#123499] text-white rounded-xl hover:scale-110 transition-all"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                            <button class="delete-btn p-3 text-red-500 hover:bg-red-500/10 rounded-xl"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                `;
+
+                // Attachement manuel des événements pour éviter les erreurs de scope
+                card.querySelector('.edit-btn').onclick = () => openUpdateModal(g.id, g.title, g.current_value);
+                card.querySelector('.delete-btn').onclick = () => deleteGoal(g.id);
+                
+                container.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        async function saveGoal() {
+            const title = document.getElementById('gTitle').value;
+            const target_value = document.getElementById('gTarget').value;
+            const currency = document.getElementById('gCurrency').value;
+            const category = document.getElementById('gCat').value;
+
+            if(!title || !target_value) return;
+
+            const { error } = await _supabase.from('goals').insert([{ title, target_value, currency, category }]);
+            if(!error) { 
+                toggleModal('goalModal', false); 
+                loadGoals(); 
+                document.getElementById('gTitle').value = "";
+                document.getElementById('gTarget').value = "";
+            }
+        }
+
+        function openUpdateModal(id, title, current) {
+            document.getElementById('updateId').value = id;
+            document.getElementById('displayGoalName').innerText = title;
+            document.getElementById('newCurrentValue').value = current;
+            toggleModal('updateModal', true);
+        }
+
+        async function submitUpdate() {
+            const id = document.getElementById('updateId').value;
+            const newVal = document.getElementById('newCurrentValue').value;
+            
+            const { error } = await _supabase.from('goals').update({ current_value: newVal }).eq('id', id);
+            if(!error) { 
+                toggleModal('updateModal', false); 
+                loadGoals(); 
+            }
+        }
+
+        async function deleteGoal(id) {
+            if(confirm("Supprimer cet objectif ?")) {
+                await _supabase.from('goals').delete().eq('id', id);
+                loadGoals();
+            }
+        }
+
+        async function logout() { await _supabase.auth.signOut(); window.location.href = 'login.html'; }
+        loadGoals();
+        lucide.createIcons();
+    </script>
+</body>
+</html>

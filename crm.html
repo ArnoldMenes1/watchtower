@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Contacts | The Watchtower</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+        :root { --rich-black: #00072d; --accent: #123499; --card-bg: rgba(255, 255, 255, 0.03); --border: rgba(255, 255, 255, 0.05); --text-main: #ffffff; --text-mute: #94a3b8; }
+        body.light-mode { --rich-black: #f8fafc; --card-bg: #ffffff; --border: rgba(0, 0, 0, 0.06); --text-main: #0f172a; --text-mute: #64748b; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--rich-black); color: var(--text-main); margin: 0; transition: background 0.3s; overflow-x: hidden; }
+        
+        .sidebar { background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(20px); border-right: 1px solid var(--border); }
+        body.light-mode .sidebar { background: #ffffff; }
+        
+        .nav-link { transition: 0.3s; border-radius: 12px; color: var(--text-mute); display: flex; align-items: center; gap: 12px; padding: 0.8rem 1rem; font-size: 0.875rem; font-weight: 700; }
+        .nav-link:hover, .nav-link.active { background: var(--accent); color: white; }
+        
+        .stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 24px; }
+        .filter-btn { padding: 6px 14px; border-radius: 10px; font-size: 10px; font-weight: 800; text-transform: uppercase; transition: 0.2s; border: 1px solid var(--border); color: var(--text-mute); }
+        .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    </style>
+</head>
+<body class="flex min-h-screen">
+
+    <aside class="sidebar w-72 fixed h-full flex flex-col p-6 z-50">
+        <div class="flex items-center gap-3 mb-10 px-2">
+            <div class="p-2 bg-[#123499] rounded-lg"><i data-lucide="shield" class="w-6 h-6 text-white"></i></div>
+            <span class="font-extrabold tracking-tighter text-xl uppercase italic text-main">The Watchtower</span>
+        </div>
+
+        <nav class="flex-grow space-y-1 overflow-y-auto pr-2">
+            <a href="dashboard.html" class="nav-link"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard</a>
+            <a href="inventory.html" class="nav-link"><i data-lucide="package" class="w-4 h-4"></i> Boutique</a>
+            <a href="crm.html" class="nav-link active"><i data-lucide="users" class="w-4 h-4"></i> CRM Contacts</a>
+            <a href="mailer-hub.html" class="nav-link"><i data-lucide="mail" class="w-4 h-4"></i> Mailler Hub</a>
+            
+            <div class="pt-6 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Stratégie</div>
+            <a href="goals.html" class="nav-link"><i data-lucide="target" class="w-4 h-4"></i> Objectifs</a>
+            <a href="tasks.html" class="nav-link"><i data-lucide="check-square" class="w-4 h-4"></i> Tâches</a>
+            <a href="social-manager.html" class="nav-link"><i data-lucide="share-2" class="w-4 h-4"></i> Social Manager</a>
+            
+            <div class="pt-6 pb-2 px-4 text-[10px] font-black text-blue-500 uppercase tracking-[0.2em]">Intelligence</div>
+            <a href="ai-hub.html" class="nav-link border border-blue-500/20 bg-blue-500/5 text-blue-400">
+                <i data-lucide="sparkles" class="w-4 h-4"></i> IA Hub
+            </a>
+        </nav>
+
+        <div class="mt-auto pt-6 space-y-2 border-t border-white/5">
+            <button onclick="toggleTheme()" class="w-full p-3 rounded-xl bg-[#123499]/10 text-[#123499] font-black text-[10px] uppercase flex items-center justify-center gap-2 border border-[#123499]/20 hover:bg-[#123499]/20 transition-all">
+                <i data-lucide="sun" class="w-4 h-4"></i> SWITCH THÈME
+            </button>
+            <button onclick="logout()" class="nav-link text-red-500 hover:bg-red-500/10 w-full justify-center">
+                <i data-lucide="log-out" class="w-4 h-4"></i> Déconnexion
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-grow ml-72 p-10">
+        <header class="flex justify-between items-start mb-12">
+            <div>
+                <h1 class="text-4xl font-black uppercase tracking-tight">CRM Hub</h1>
+                <p class="text-slate-500 text-sm font-bold mt-1">Base de données prospects • <span id="leadCounter" class="text-[#123499]">0</span></p>
+            </div>
+            <div class="flex gap-2 bg-white/5 p-1 rounded-xl border border-white/5">
+                <button onclick="filterByLang('ALL')" id="btn-ALL" class="filter-btn active">Tous</button>
+                <button onclick="filterByLang('FR')" id="btn-FR" class="filter-btn">Français</button>
+                <button onclick="filterByLang('EN')" id="btn-EN" class="filter-btn">Anglais</button>
+            </div>
+        </header>
+
+        <div class="stat-card p-8 min-h-[500px]">
+            <div id="loader" class="py-20 text-center text-slate-500 font-bold uppercase text-[10px] animate-pulse">Synchronisation...</div>
+            
+            <div id="tableWrapper" class="hidden overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">
+                            <th class="pb-4 px-4">Utilisateur</th>
+                            <th class="pb-4 px-4">Contact</th>
+                            <th class="pb-4 px-4">Langue</th>
+                            <th class="pb-4 px-4">Date (Nouveau → Ancien)</th>
+                            <th class="pb-4 px-4 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="crmTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const _supabase = supabase.createClient('https://lateattegnkqduqbpvta.supabase.co', 'sb_publishable_SspxOBPHM5ZIdRnX8W4V0A_ONolbILg', {
+            auth: { persistSession: false }
+        });
+
+        let allContacts = [];
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem('watchtower-theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+            lucide.createIcons();
+        }
+        if(localStorage.getItem('watchtower-theme') === 'light') document.body.classList.add('light-mode');
+
+        async function loadCRM() {
+            try {
+                const { data, error } = await _supabase
+                    .from('contacts')
+                    .select('*')
+                    .order('created_at', { ascending: false }); // Tri par ancienneté (nouveau en haut)
+
+                if (error) throw error;
+
+                allContacts = data || [];
+                displayData(allContacts);
+
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('tableWrapper').classList.remove('hidden');
+                document.getElementById('leadCounter').innerText = allContacts.length;
+
+            } catch (err) {
+                console.error(err);
+                if(err.message.includes("JWT")) window.location.href = 'login.html';
+            }
+        }
+
+        function displayData(list) {
+            const container = document.getElementById('crmTableBody');
+            if (list.length === 0) {
+                container.innerHTML = `<tr><td colspan="5" class="py-20 text-center text-slate-500 uppercase text-[10px] font-black">Aucun résultat.</td></tr>`;
+                return;
+            }
+
+            container.innerHTML = list.map(c => `
+                <tr class="border-b border-white/5 hover:bg-[#123499]/5 transition-all">
+                    <td class="py-5 px-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#123499] to-blue-400 flex items-center justify-center text-[10px] font-black text-white uppercase">
+                                ${(c.full_name || 'C').charAt(0)}
+                            </div>
+                            <span class="font-bold text-sm uppercase">${c.full_name || 'Anonyme'}</span>
+                        </div>
+                    </td>
+                    <td class="py-5 px-4 text-xs font-bold text-slate-500">${c.email}</td>
+                    <td class="py-5 px-4">
+                        <span class="px-2 py-1 rounded bg-[#123499]/10 text-[#123499] text-[9px] font-black border border-[#123499]/20 uppercase">
+                            ${c.language || 'FR'}
+                        </span>
+                    </td>
+                    <td class="py-5 px-4 text-[10px] font-bold text-slate-500 italic">${new Date(c.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td class="py-5 px-4 text-right">
+                        <button onclick="window.location.href='mailer-hub.html?to=${c.email}'" class="p-2 text-[#123499] hover:scale-110 transition-transform">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function filterByLang(lang) {
+            // UI Update
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${lang}`).classList.add('active');
+
+            // Logic
+            if (lang === 'ALL') {
+                displayData(allContacts);
+            } else {
+                const filtered = allContacts.filter(c => c.language === lang);
+                displayData(filtered);
+            }
+        }
+
+        async function logout() { await _supabase.auth.signOut(); window.location.href = 'login.html'; }
+
+        loadCRM();
+        lucide.createIcons();
+    </script>
+</body>
+</html>
