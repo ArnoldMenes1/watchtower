@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store | The Productivity Labs Hub</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+        :root { 
+            --rich-black: #00072d; 
+            --accent: #123499; 
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--rich-black); 
+            color: #ffffff; 
+            transition: all 0.3s ease;
+        }
+        .light-mode { background-color: #f8fafc; color: #0f172a; --glass: rgba(0, 0, 0, 0.03); --glass-border: rgba(0, 0, 0, 0.1); }
+        
+        .product-card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .product-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--accent);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        /* Modal Glassmorphism */
+        #productModal {
+            backdrop-filter: blur(10px);
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #productModal.active { display: flex; opacity: 1; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #123499, #051650);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover { transform: scale(1.02); filter: brightness(1.2); }
+
+        /* Responsive Grids */
+        @media (max-width: 640px) {
+            .modal-content { flex-direction: column-reverse; }
+            .modal-image { height: 250px; border-radius: 20px 20px 0 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <nav class="sticky top-0 z-50 backdrop-blur-xl border-b border-white/5 px-4 lg:px-10 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="location.href='index.html'">
+            <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/20">
+                <i data-lucide="layers" class="text-white w-6 h-6"></i>
+            </div>
+            <span class="font-extrabold tracking-tighter text-xl hidden sm:block">THE WATCH TOWER</span>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button id="langToggle" class="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10 hover:bg-white/10 transition-all">
+                <i data-lucide="languages" class="w-4 h-4"></i>
+                <span id="currentLangLabel" class="text-xs font-bold uppercase">FR</span>
+            </button>
+            
+            <button id="themeToggle" class="p-2 bg-white/5 rounded-full border border-white/10">
+                <i id="themeIcon" data-lucide="sun" class="w-5 h-5 text-yellow-400"></i>
+            </button>
+        </div>
+    </nav>
+
+    <section class="max-w-7xl mx-auto px-6 mt-12 mb-8 flex flex-wrap gap-4 items-center justify-between">
+        <div>
+            <h1 id="storeTitle" class="text-4xl lg:text-6xl font-extrabold mb-2">Boutique <span class="text-blue-500 tracking-tighter">Hub</span></h1>
+            <p id="storeSub" class="text-slate-400 text-sm">Bienvenue dans l'écosystème The Watch Tower . Nous concevons des systèmes de gestion avancés et des architectures numériques conçus pour les bâtisseurs de demain. Que vous soyez entrepreneur, développeur ou créateur, nos outils sont forgés pour transformer votre chaos opérationnel en une structure fluide et automatisée. Ici, nous ne vendons pas seulement de la productivité, nous fournissons l'infrastructure nécessaire à votre ascension."</p>
+        </div>
+        <div class="flex gap-2">
+            <select id="categoryFilter" class="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-500">
+                <option value="all">Toutes catégories</option>
+                <option value="Notion">Notion</option>
+                <option value="Software">Software</option>
+            </select>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-6">
+        <div id="productContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            </div>
+    </main>
+
+    <div id="productModal" class="fixed inset-0 z-[100] p-4 items-center justify-center">
+        <div class="absolute inset-0 bg-black/80" onclick="closeModal()"></div>
+        <div class="modal-content relative bg-[#000d45] border border-white/10 w-full max-w-4xl rounded-[32px] overflow-hidden flex flex-col md:flex-row shadow-2xl">
+            <div class="flex-1 p-8 md:p-12 flex flex-col justify-between">
+                <div>
+                    <div id="modalCategory" class="text-blue-400 text-xs font-bold uppercase tracking-widest mb-4">Catégorie</div>
+                    <h2 id="modalTitle" class="text-3xl md:text-4xl font-black mb-6">Nom du Produit</h2>
+                    <p id="modalDesc" class="text-slate-400 leading-relaxed mb-8">Description complète ici...</p>
+                </div>
+                <div class="flex items-center justify-between gap-6 border-t border-white/10 pt-8">
+                    <div id="modalPrice" class="text-3xl font-black text-white">00$</div>
+                    <button id="modalBuyBtn" class="btn-primary flex-1 py-4 rounded-2xl font-black flex items-center justify-center gap-3">
+                        ACHETER MAINTENANT
+                        <i data-lucide="external-link" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <button onclick="closeModal()" class="absolute top-4 right-4 md:hidden text-white/50">Fermer</button>
+            </div>
+            <div class="md:w-1/2 h-64 md:h-auto overflow-hidden">
+                <img id="modalImg" src="" class="w-full h-full object-cover">
+            </div>
+        </div>
+    </div>
+
+    <footer class="max-w-7xl mx-auto px-6 mt-20 py-8 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <p class="text-slate-500 text-xs italic opacity-50">© 2026 The Watch Tower </p>
+        <div class="flex gap-6">
+            <a href="https://arnoldmenes1.github.io/watchtower/privacy.html" class="text-xs text-slate-400 hover:text-blue-400">Politique de Confidentialité</a>
+            <a href="https://arnoldmenes1.github.io/watchtower/terms.html" class="text-xs text-slate-400 hover:text-blue-400">Conditions d'Utilisation</a>
+        </div>
+    </footer>
+
+    <script>
+        const SB_URL = 'https://lateattegnkqduqbpvta.supabase.co';
+        const SB_KEY = 'sb_publishable_SspxOBPHM5ZIdRnX8W4V0A_ONolbILg';
+        const _supabase = supabase.createClient(SB_URL, SB_KEY);
+
+        let currentLang = localStorage.getItem('userLang') || (navigator.language.startsWith('fr') ? 'FR' : 'EN');
+        let allProducts = [];
+
+        // --- TRADUCTIONS UI ---
+        const i18n = {
+            FR: { title: "Store", sub: "Bienvenue dans l'écosystème The Watch Tower. Nous concevons des systèmes de gestion avancés et des architectures numériques conçus pour les bâtisseurs de demain. Que vous soyez entrepreneur, développeur ou créateur, nos outils sont forgés pour transformer votre chaos opérationnel en une structure fluide et automatisée. Ici, nous ne vendons pas seulement de la productivité, nous fournissons l'infrastructure nécessaire à votre ascension.", cat: "Toutes catégories", buy: "ACHETER" },
+            EN: { title: "The Shop", sub: "Welcome to The Watch Tower ecosystem. We engineer advanced management systems and digital architectures tailored for tomorrow's builders. Whether you are an entrepreneur, developer, or creator, our tools are forged to transform your operational chaos into a fluid, automated structure. Here, we don't just sell productivity—we provide the essential infrastructure for your growth and digital dominance.", cat: "All Categories", buy: "BUY NOW" }
+        };
+
+        // --- INITIALISATION ---
+        async function init() {
+            updateUIStrings();
+            await fetchProducts();
+            setupEventListeners();
+            lucide.createIcons();
+        }
+
+        function updateUIStrings() {
+            const lang = i18n[currentLang];
+            document.getElementById('storeTitle').innerHTML = `${lang.title} <span class="text-blue-500 tracking-tighter">${currentLang}</span>`;
+            document.getElementById('storeSub').innerText = lang.sub;
+            document.getElementById('currentLangLabel').innerText = currentLang;
+            document.getElementById('categoryFilter').firstElementChild.innerText = lang.cat;
+        }
+
+        async function fetchProducts() {
+            const { data, error } = await _supabase
+                .from('products')
+                .select('*')
+                .eq('language', currentLang)
+                .eq('is_active', true)
+                .order('created_at', { ascending: false });
+
+            if (error) return console.error(error);
+            allProducts = data;
+            renderProducts(allProducts);
+        }
+
+        function renderProducts(list) {
+            const container = document.getElementById('productContainer');
+            container.innerHTML = list.map(p => `
+                <div class="product-card group cursor-pointer" onclick="openModal('${p.id}')">
+                    <div class="relative h-60 rounded-t-[23px] overflow-hidden">
+                        <img src="${p.image_url}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                            <span class="text-white font-bold text-sm">Voir les détails</span>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-extrabold text-xl line-clamp-1">${p.name}</h3>
+                            <span class="text-blue-400 font-black">${p.price}${p.currency === 'EUR' ? '€' : '$'}</span>
+                        </div>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-6">
+                            ${p.description.substring(0, 60)}...
+                        </p>
+                        <div class="flex items-center justify-between">
+                            <span class="px-3 py-1 bg-white/5 rounded-full text-[10px] uppercase font-bold text-slate-500">${p.category}</span>
+                            <i data-lucide="plus-circle" class="w-5 h-5 text-blue-500"></i>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // --- MODAL LOGIC ---
+        function openModal(id) {
+            const p = allProducts.find(item => item.id === id);
+            document.getElementById('modalTitle').innerText = p.name;
+            document.getElementById('modalDesc').innerText = p.description;
+            document.getElementById('modalPrice').innerText = `${p.price}${p.currency === 'EUR' ? '€' : '$'}`;
+            document.getElementById('modalCategory').innerText = p.category;
+            document.getElementById('modalImg').src = p.image_url;
+            document.getElementById('modalBuyBtn').onclick = () => {
+                 processPurchase(p.id, p.chariow_link);
+            };
+            
+            const modal = document.getElementById('productModal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            document.getElementById('productModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        async function processPurchase(id, link) {
+            await _supabase.from('product_interactions').insert([{
+                product_id: id, action_type: 'click_buy', platform: `Web Store ${currentLang}`
+            }]);
+            window.location.href = link;
+        }
+
+        // --- EVENTS ---
+        function setupEventListeners() {
+            document.getElementById('langToggle').addEventListener('click', () => {
+                currentLang = currentLang === 'FR' ? 'EN' : 'FR';
+                localStorage.setItem('userLang', currentLang);
+                init();
+            });
+
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                document.body.classList.toggle('light-mode');
+                const isDark = !document.body.classList.contains('light-mode');
+                document.getElementById('themeIcon').setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+                lucide.createIcons();
+            });
+
+            document.getElementById('categoryFilter').addEventListener('change', (e) => {
+                const cat = e.target.value;
+                const filtered = cat === 'all' ? allProducts : allProducts.filter(p => p.category === cat);
+                renderProducts(filtered);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
